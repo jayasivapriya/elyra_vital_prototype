@@ -1,8 +1,9 @@
+import folium
+from streamlit_folium import folium_static
+import requests
 import streamlit as st
 import cv2
 import numpy as np
-import folium
-from streamlit_folium import folium_static
 import heapq
 import math
 
@@ -209,6 +210,22 @@ def get_action_engine_route(diagnosis):
         )
 
     return best_hospital, hospitals
+def find_nearest_hospital(lat, lon):
+    API_KEY = "YOUR_API_KEY"  # 🔴 replace this
+
+    url = f"https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={lat},{lon}&radius=5000&type=hospital&key={API_KEY}"
+
+    response = requests.get(url)
+    data = response.json()
+
+    if data.get("results"):
+        hospital = data["results"][0]
+        name = hospital["name"]
+        loc = hospital["geometry"]["location"]
+
+        return name, loc["lat"], loc["lng"]
+    else:
+        return "No hospital found", lat, lon
 # --- 3. UI DASHBOARD ---
 
 st.title("🌸 Elyra Vital: AI Women's Health Suite")
@@ -448,30 +465,23 @@ with tab2:
 with tab3:
     st.header("📍 Smart Healthcare Routing")
 
-    diag = st.session_state.get('diagnosis', "General")
-    st.info(f"Finding best hospital for: **{diag}**")
+    st.subheader("📍 Enter Your Location")
 
-    best, hospitals = get_action_engine_route(diag)
+    user_lat = st.number_input("Enter your Latitude", value=12.9716)
+    user_lon = st.number_input("Enter your Longitude", value=80.2447)
 
-    # Get user + hospital coordinates
-    user_lat, user_lon = hospitals["User"]["pos"]
-    dest_lat, dest_lon = hospitals[best]["pos"]
+    name, dest_lat, dest_lon = find_nearest_hospital(user_lat, user_lon)
 
-    st.success(f"🏥 Recommended Hospital: **{best}**")
+    st.success(f"🏥 Nearest Hospital: **{name}**")
 
-    # ✅ Google Maps Direction Link
-    maps_url = f"https://www.google.com/maps/dir/{user_lat},{user_lon}/{dest_lat},{dest_lon}"
+    import folium
+    from streamlit_folium import folium_static
 
-    st.markdown("### 🚗 Navigate to Hospital")
+    m = folium.Map(location=[user_lat, user_lon], zoom_start=13)
 
-    st.markdown(
-        f"""
-        <a href="{maps_url}" target="_blank">
-            <button style="background-color:#ff4b4b;color:white;padding:10px 20px;
-            border:none;border-radius:5px;font-size:16px;">
-            Open in Google Maps
-            </button>
-        </a>
-        """,
-        unsafe_allow_html=True
-    )
+    folium.Marker([user_lat, user_lon], tooltip="You").add_to(m)
+    folium.Marker([dest_lat, dest_lon], tooltip=name).add_to(m)
+
+    folium.PolyLine([[user_lat, user_lon], [dest_lat, dest_lon]]).add_to(m)
+
+    folium_static(m)
