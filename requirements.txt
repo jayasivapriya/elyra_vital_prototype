@@ -1,0 +1,7 @@
+streamlit==1.38.0
+opencv-python-headless==4.10.0
+pillow==10.4.0
+numpy==1.26.4
+folium==0.17.0
+streamlit-folium==0.17.0
+mediapipe==0.10.14
